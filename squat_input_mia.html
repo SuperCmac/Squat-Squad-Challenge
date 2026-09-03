@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Squat Squad — Mia</title>
+<style>
+  :root{
+    --ink:#181A1B; --concrete:#EDEAE2; --concrete-dim:#D9D4C8;
+    --power:#FF4B12; --steel:#3A5DFF; --green:#1F8A5C;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--ink);color:var(--concrete);min-height:100vh;-webkit-font-smoothing:antialiased;}
+  #app{max-width:420px;margin:0 auto;padding:0 0 40px;}
+  header{padding:30px 20px 20px;border-bottom:3px solid var(--power);}
+  header .eyebrow{font-size:13px;color:var(--concrete-dim);margin-bottom:4px;}
+  header h1{font-size:32px;margin:0;font-weight:900;letter-spacing:-0.02em;}
+  section{margin:24px 20px 0;}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .statcard{background:#212325;border-radius:12px;padding:14px 8px;text-align:center;}
+  .statcard .sv{font-size:22px;font-weight:900;}
+  .statcard .sl{font-size:11px;color:var(--concrete-dim);margin-top:2px;}
+  .goalcard{background:#212325;border-radius:14px;padding:16px;margin-top:14px;}
+  .goalcard .top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px;}
+  .goaltrack{height:10px;background:#33363a;border-radius:5px;overflow:hidden;}
+  .goalfill{height:100%;background:var(--steel);border-radius:5px;transition:width .5s ease;}
+  .goalfill.done{background:var(--green);}
+  .goalmeta{font-size:11px;color:var(--concrete-dim);margin-top:6px;}
+  .addcard{background:#212325;border-radius:14px;padding:20px;margin-top:10px;}
+  .addcard h2{margin:0 0 14px;font-size:18px;}
+  .amtrow{display:flex;gap:10px;}
+  input[type=number]{flex:1;padding:16px;border-radius:10px;border:2px solid #33363a;background:#181A1B;color:var(--concrete);font-size:20px;font-weight:700;text-align:center;}
+  input[type=number]:focus{outline:none;border-color:var(--steel);}
+  .addbtn{padding:16px 24px;border-radius:10px;border:none;background:var(--power);color:white;font-weight:800;font-size:16px;cursor:pointer;}
+  .addbtn:disabled{opacity:0.5;}
+  .quickrow{display:flex;gap:8px;margin-top:12px;}
+  .quickbtn{flex:1;padding:11px 0;border-radius:8px;border:1px solid #33363a;background:transparent;color:var(--concrete-dim);font-size:14px;cursor:pointer;}
+  .status{font-size:13px;margin-top:12px;min-height:16px;}
+  .history{margin-top:14px;}
+  .hrow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #2c2e30;font-size:14px;}
+  .hrow:last-child{border-bottom:none;}
+  .hrow .hd{color:var(--concrete-dim);}
+  footer{text-align:center;padding:26px 20px 0;color:#5a5d61;font-size:12px;}
+  #confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;}
+  .loading{display:flex;align-items:center;justify-content:center;height:100vh;color:var(--concrete-dim);}
+</style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+<div id="loading" class="loading">Loading…</div>
+<div id="app" style="display:none;"></div>
+
+<script>
+// ====== CONFIG: paste your Apps Script Web App URL here ======
+const API_URL = "https://script.google.com/macros/s/AKfycbzvq8Q0C6H4GNNfaOnnVWYiGU2HgkMXtChX3diGp3TzS1zNjhR_KIKLuZpugXwCQOih/exec";
+// ================================================================
+
+const USER_NAME = "Mia";
+const GOALS = { "2026-09": 1000, "2026-10": 1500, "2026-11": 2000 };
+const MONTH_LABELS = { "2026-09": "September", "2026-10": "October", "2026-11": "November" };
+
+let entries = [];
+
+async function loadEntries(){
+  const res = await fetch(API_URL + "?action=list");
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || "unknown error");
+  entries = data.entries || [];
+}
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function monthKey(d){ return d.slice(0,7); }
+function startOfWeek(d){
+  const dt = new Date(d+"T00:00:00");
+  const day = dt.getDay();
+  const diff = (day===0?-6:1)-day;
+  dt.setDate(dt.getDate()+diff);
+  return dt.toISOString().slice(0,10);
+}
+
+function myTotals(){
+  const today = todayISO();
+  const weekStart = startOfWeek(today);
+  const curMonth = monthKey(today);
+  let daily=0, weekly=0, monthly=0;
+  entries.forEach(e=>{
+    if(e.user !== USER_NAME) return;
+    const amt = Number(e.amount);
+    if(e.date === today) daily += amt;
+    if(e.date >= weekStart && e.date <= today) weekly += amt;
+    if(monthKey(e.date) === curMonth) monthly += amt;
+  });
+  return {daily, weekly, monthly, curMonth};
+}
+
+function myHistory(){
+  return entries.filter(e=>e.user===USER_NAME).sort((a,b)=>b.ts-a.ts).slice(0,8);
+}
+
+function render(){
+  const {daily, weekly, monthly, curMonth} = myTotals();
+  const target = GOALS[curMonth] || 0;
+  const pct = target ? Math.min(100, (monthly/target*100)) : 0;
+  const done = monthly >= target;
+  const hist = myHistory();
+
+  let html = `
+  <header><div class="eyebrow">Squat Squad</div><h1>Hey, ${USER_NAME}</h1></header>
+  <section>
+    <div class="statgrid">
+      <div class="statcard"><div class="sv">${daily}</div><div class="sl">Today</div></div>
+      <div class="statcard"><div class="sv">${weekly}</div><div class="sl">This week</div></div>
+      <div class="statcard"><div class="sv">${monthly}</div><div class="sl">This month</div></div>
+    </div>
+    <div class="goalcard">
+      <div class="top"><span>${MONTH_LABELS[curMonth] || curMonth} goal</span><span>${monthly} / ${target}</span></div>
+      <div class="goaltrack"><div class="goalfill ${done?'done':''}" style="width:${pct}%"></div></div>
+      <div class="goalmeta">${done ? "Goal hit! 🎉" : (target - monthly) + " to go"}</div>
+    </div>
+  </section>
+  <section>
+    <div class="addcard">
+      <h2>Log your squats</h2>
+      <div class="amtrow">
+        <input type="number" id="amount" placeholder="How many?" min="1">
+        <button class="addbtn" id="addbtn">Add</button>
+      </div>
+      <div class="quickrow">${[10,20,25,50].map(v=>`<button class="quickbtn" data-amt="${v}">+${v}</button>`).join('')}</div>
+      <div class="status" id="status"></div>
+    </div>
+  </section>
+  <section>
+    <div class="addcard">
+      <h2>Your recent entries</h2>
+      <div class="history">
+        ${hist.length ? hist.map(e=>`<div class="hrow"><span>${e.amount} squats</span><span class="hd">${e.date}</span></div>`).join('') : '<div class="hrow"><span class="hd">Nothing logged yet — add your first set above.</span></div>'}
+      </div>
+    </div>
+  </section>
+  <footer>Only your entries live here. Ask the group for the shared leaderboard link to see everyone's progress.</footer>
+  `;
+  document.getElementById('app').innerHTML = html;
+  wireEvents();
+}
+
+function wireEvents(){
+  document.querySelectorAll('.quickbtn').forEach(b=>{ b.onclick=()=>{ document.getElementById('amount').value=b.dataset.amt; }; });
+  document.getElementById('addbtn').onclick = submitEntry;
+}
+
+async function submitEntry(){
+  const amtInput = document.getElementById('amount');
+  const addBtn = document.getElementById('addbtn');
+  const amount = parseInt(amtInput.value, 10);
+  const statusEl = document.getElementById('status');
+  if(!amount || amount <= 0){
+    statusEl.style.color = "#FF4B12";
+    statusEl.textContent = "Enter a number above 0.";
+    return;
+  }
+  addBtn.disabled = true;
+  statusEl.style.color = "#D9D4C8";
+  statusEl.textContent = "Saving…";
+  try{
+    const url = API_URL + "?action=add&user=" + encodeURIComponent(USER_NAME)
+      + "&amount=" + amount + "&date=" + todayISO();
+    const res = await fetch(url);
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error || "save failed");
+    fireConfetti();
+    statusEl.style.color = "#1F8A5C";
+    statusEl.textContent = `Nice! ${amount} squats logged.`;
+    amtInput.value = '';
+    await loadEntries();
+    render();
+  }catch(err){
+    statusEl.style.color = "#FF4B12";
+    statusEl.textContent = "Couldn't save — check your connection and try again.";
+  }finally{
+    addBtn.disabled = false;
+  }
+}
+
+function fireConfetti(){
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const colors = ['#FF4B12','#3A5DFF','#1F8A5C','#EDEAE2'];
+  const pieces = [];
+  for(let i=0;i<120;i++){
+    pieces.push({
+      x: canvas.width/2 + (Math.random()-0.5)*100, y: canvas.height*0.3,
+      vx: (Math.random()-0.5)*12, vy: -Math.random()*10-6,
+      size: Math.random()*7+4, color: colors[Math.floor(Math.random()*colors.length)],
+      rot: Math.random()*360, vr: (Math.random()-0.5)*20
+    });
+  }
+  let frame=0;
+  function tick(){
+    frame++;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      p.vy += 0.35; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size);
+      ctx.restore();
+    });
+    if(frame < 90){ requestAnimationFrame(tick); } else { ctx.clearRect(0,0,canvas.width,canvas.height); }
+  }
+  tick();
+}
+
+(async function init(){
+  try{ await loadEntries(); }catch(e){ console.error(e); }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  render();
+})();
+</script>
+</body>
+</html>
