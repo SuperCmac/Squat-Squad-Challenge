@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Squat Squad</title>
+<style>
+  :root{ --ink:#181A1B; --concrete:#EDEAE2; --concrete-dim:#D9D4C8; --power:#FF4B12; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--ink);color:var(--concrete);min-height:100vh;-webkit-font-smoothing:antialiased;}
+  #wrap{max-width:420px;margin:0 auto;padding:30px 20px 40px;}
+  h1{font-size:32px;margin:0 0 4px;font-weight:900;letter-spacing:-0.02em;border-bottom:3px solid var(--power);padding-bottom:20px;}
+  h1 span{color:var(--power);}
+  p.sub{color:var(--concrete-dim);font-size:14px;margin:16px 0 26px;}
+  .linklist{display:flex;flex-direction:column;gap:10px;}
+  a.linkcard{
+    display:block;background:#212325;border-radius:12px;padding:16px 18px;
+    color:var(--concrete);text-decoration:none;font-weight:700;font-size:16px;
+    border:2px solid transparent;
+  }
+  a.linkcard:active{border-color:var(--power);}
+  a.linkcard span{display:block;font-weight:400;font-size:12px;color:var(--concrete-dim);margin-top:3px;}
+  .section-label{font-size:12px;color:var(--concrete-dim);margin:24px 0 8px;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>SQUAT<span>SQUAD</span></h1>
+  <p class="sub">Everyone shares the leaderboard. Each person logs their own reps from their own link below.</p>
+
+  <div class="section-label">Shared dashboard</div>
+  <div class="linklist">
+    <a class="linkcard" href="squat_challenge.html">Leaderboard<span>Monthly totals, goals, and winners</span></a>
+  </div>
+
+  <div class="section-label">Personal log-in links</div>
+  <div class="linklist">
+    <a class="linkcard" href="squat_input_mia.html">Mia<span>Log squats</span></a>
+    <a class="linkcard" href="squat_input_connor.html">Connor<span>Log squats</span></a>
+    <a class="linkcard" href="squat_input_ryan.html">Ryan<span>Log squats</span></a>
+    <a class="linkcard" href="squat_input_jocelyn.html">Jocelyn<span>Log squats</span></a>
+  </div>
+</div>
+</body>
+</html>
